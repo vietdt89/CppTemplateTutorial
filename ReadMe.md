@@ -31,15 +31,24 @@ template <typename T> class ClassA
 ``` C++
 void foo(int a);
 ```
-
-例如我们用`ClassA<int>`来实例化模板类ClassA，那么`ClassA<int>`可以等同于以下的定义：
+Example
 
 ``` C++
-//vk
-typedef class {
-	int member;
-} ClassA<int>;
+template <typename T>
+class A{
+public:
+    T a;
+};
+
+void main(){
+    A<char> a;
+    std::cout << typeid (a.a).name() << std::endl;
+}
 ```
+Printout
+''' C++
+c
+'''
 
 可以看出，通过模板参数替换类型，可以获得很多形式相同的新类型，有效减少了代码量。这种用法，我们称之为“泛型”（Generic Programming），它最常见的应用，即是STL中的容器模板类。
 
