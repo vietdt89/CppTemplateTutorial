@@ -1,108 +1,41 @@
 
 # C++ Template Advance guide
 
-### 0.2 Appropriate readership
+Appropriate readership
+This article is not used to get started with C++, the example involves some other knowledge. So it will be easier if the reader is:
++ Familiar with C++
++ Get used to STL
++ Familiar with algorithms
+This article is not just a repetition of ["C++ template"](https://www.amazon.com/C-Templates-Complete-Guide-2nd/dp/0321714121) and less overlap with ["Modern C++ Design"](https://www.amazon.com/Modern-Design-Programming-Patterns-Depth-ebook/dp/B00AU3JUHG/ref=pd_vtpd_14_6/142-2615446-3327350)
+It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
+Copyright: This article belongs to @wuye9036. I translate what I consider important
 
-因为本文并不是用于C++入门，例子中也多少会牵涉一些其它知识，因此如果读者能够具备以下条件，会读起来更加轻松：
+## 1. Template basic syntax
 
-* 熟悉C++的基本语法；
-* 使用过STL；
-* 熟悉一些常用的算法，以及递归等程序设计方法。
+### 1.1 Template Class basic syntax
 
-此外，尽管第一章会介绍一些Template的基本语法，但是还是会略显单薄。因此也希望读者能对C++ Template最基本语法形式有所了解和掌握；如果会编写基本的模板函数和模板类那就更好了。
+#### 1.1.1 Template Class and member variable definition
 
-诚如上节所述，本文并不是《C++ Templates》的简单重复，与《Modern C++ Design》交叠更少。从知识结构上，我建议大家可以先读本文，再阅读《C++ Templates》获取更丰富的语法与实现细节，以更进一步；《Modern C++ Design》除了元编程之外，还有很多的泛型编程示例，原则上泛型编程的部分与我所述的内容交叉不大，读者在读完1-3章了解模板的基本规则之后便可阅读《MCD》的相应章节；元编程部分（如Typelist）建议在阅读完本文之后再行阅读，或许会更易理解。
-
-### 0.3 版权
-
-本文是随写随即同步到Github上，因此在行文中难免会遗漏引用。本文绝大部分内容应是直接承出我笔，但是也不定会有他山之石。所有指涉内容我会尽量以引号框记，或在上下文和边角注记中标示，如有遗漏烦请不吝指出。
-
-全文所有为我所撰写的部分，作者均保留所有版权。如果有需要转帖或引用，还请注明出处并告知于我。
-
-### 0.4 推荐编译环境
-
-C++编译器众多，且对模板的支持可能存在细微差别。如果没有特别强调，本书行文过程中，使用了下列编译器来测试文中提供的代码和示例：
-
-* Clang 3.7 (x86)
-* Visual Studio 2015 Update 3
-* GCC 7 (x86, snapshot)
-
-此外，部分复杂实例我们还在文中提供了在线的编译器预览以方便大家阅读和测试。在线编译器参见： [`gcc.godbolt.org`](https://gcc.godbolt.org/)。
-
-一些示例中用到的特性所对应的C++标准：
-
-|特性|标准|
-|---|---|
-| std::decay_t<T> | C++ 14 |
-
-### 0.5 体例
-
-#### 0.5.1 示例代码
-
-```C++
-void SampleCode() {
-    // 这是一段示例代码
-}
-```
-
-#### 0.5.2 引用
-
-引用自C++标准：
-
-> 1.1.2/1 这是一段引用或翻译自标准的文字
-
-引用自其他图书：
-
-> 《书名》
-> 这是一段引用或翻译自其他图书的文字
-
-### 0.6 意见、建议、喷、补遗、写作计划
-
-* 需增加：
-  * 模板的使用动机。
-  * 增加“如何使用本文”一节。本节将说明全书的体例（强调字体、提示语、例子的组织），所有的描述、举例、引用在重审时将按照体例要求重新组织。
-  * 除了用于描述语法的例子外，其他例子将尽量赋予实际意义，以方便阐述意图。
-  * 在合适的章节完整叙述模板的类型推导规则。Parameter-Argument, auto variable, decltype, decltype(auto)
-  * 在函数模板重载和实例化的部分讲述ADL。
-  * 变参模板处应当按照标准（Argument Packing/Unpacking）来讲解。
-* 建议：
-  * 比较模板和函数的差异性
-  * 蓝色：C++14 Return type deduction for normal functions 的分析
-
-## 1. Template的基本语法
-
-### 1.1 Template Class基本语法
-
-#### 1.1.1 Template Class的与成员变量定义
-我们来回顾一下最基本的Template Class声明和定义形式：
-
-Template Class声明：
+Template Class statement：
 ```C++
 template <typename T> class ClassA;
 ```
 
-Template Class定义：
+Template Class definition：
 ```C++
 template <typename T> class ClassA
 {
 	T member;
 };
 ```
-
-`template` 是C++关键字，意味着我们接下来将定义一个模板。和函数一样，模板也有一系列参数。这些参数都被囊括在template之后的`< >`中。在上文的例子中， `typename T`便是模板参数。回顾一下与之相似的函数参数的声明形式：
-
 ``` C++
 void foo(int a);
 ```
 
-`T`则可以类比为函数形参`a`，这里的“模板形参”`T`，也同函数形参一样取成任何你想要的名字；`typename`则类似于例子中函数参数类型`int`，它表示模板参数中的`T`将匹配一个类型。除了 `typename` 之外，我们在后面还要讲到，整型也可以作为模板的参数。
-
-在定义完模板参数之后，便可以定义你所需要的类。不过在定义类的时候，除了一般类可以使用的类型外，你还可以使用在模板参数中使用的类型 `T`。可以说，这个 `T`是模板的精髓，因为你可以通过指定模板实参，将T替换成你所需要的类型。
-
 例如我们用`ClassA<int>`来实例化模板类ClassA，那么`ClassA<int>`可以等同于以下的定义：
 
 ``` C++
-// 注意：这并不是有效的C++语法，只是为了说明模板的作用
+//vk
 typedef class {
 	int member;
 } ClassA<int>;
