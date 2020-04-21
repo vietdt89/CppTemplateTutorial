@@ -8,7 +8,7 @@ This article is not used to get started with C++, the example involves some othe
 + Familiar with algorithms
 This article is not just a repetition of ["C++ template"](https://www.amazon.com/C-Templates-Complete-Guide-2nd/dp/0321714121) and less overlap with ["Modern C++ Design"](https://www.amazon.com/Modern-Design-Programming-Patterns-Depth-ebook/dp/B00AU3JUHG/ref=pd_vtpd_14_6/142-2615446-3327350)
 It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
-Copyright: This article belongs to @wuye9036. I translate what I consider important
+Copyright: This article belongs to @wuye9036. I translate and modify what I consider important
 
 ## 1. Template basic syntax
 
@@ -49,13 +49,7 @@ Printout
 ``` C++
 c
 ```
-
-可以看出，通过模板参数替换类型，可以获得很多形式相同的新类型，有效减少了代码量。这种用法，我们称之为“泛型”（Generic Programming），它最常见的应用，即是STL中的容器模板类。
-
-#### 1.1.2 模板的使用
-
-对于C++来说，类型最重要的作用之一就是用它去产生一个变量。例如我们定义了一个动态数组（列表）的模板类`vector`，它对于任意的元素类型都具有push_back和clear的操作，我们便可以如下定义这个类：
-
+Template class definition full version.
 ```C++
 template <typename T>
 class vector
@@ -68,35 +62,19 @@ private:
 	T* elements;
 };
 ```
-
-此时我们的程序需要一个整型和一个浮点型的列表，那么便可以通过以下代码获得两个变量：
-
 ```C++
 vector<int> intArray;
 vector<float> floatArray;
 ```
-
-此时我们就可以执行以下的操作，获得我们想要的结果：
-
 ```C++
 intArray.push_back(5);
 floatArray.push_back(3.0f);
 ```
-
-变量定义的过程可以分成两步来看：第一步，`vector<int>`将`int`绑定到模板类`vector`上，获得了一个“普通的类`vector<int>`”；第二步通过“vector<int>”定义了一个变量。
-与“普通的类”不同，模板类是不能直接用来定义变量的。例如：
+Temlate can not be used directly to define variables
 
 ```C++
-vector unknownVector; // 错误示例
+vector unknownVector; // wrong
 ```
-
-这样就是错误的。我们把通过类型绑定将模板类变成“普通的类”的过程，称之为模板实例化（Template Instantiate）。实例化的语法是：
- 
-```
-模板名 < 模板实参1 [，模板实参2，...] >
-```
-
-看几个例子：
 ```C++
 vector<int>
 ClassA<double>
@@ -108,14 +86,8 @@ template <typename T0, typename T1> class ClassB
 
 ClassB<int, float>
 ```
-
-当然，在实例化过程中，被绑定到模板参数上的类型（即模板实参）需要与模板形参正确匹配。
-就如同函数一样，如果没有提供足够并匹配的参数，模板便不能正确的实例化。
- 
-#### 1.1.3 模板类的成员函数定义
-
-由于C++11正式废弃“模板导出”这一特性，因此在模板类的变量在调用成员函数的时候，需要看到完整的成员函数定义。因此现在的模板类中的成员函数，通常都是以内联的方式实现。
-例如：
+#### 1.1.3 Template class function definition
+Member functions in template class are usually implemented inline
 
 ``` C++
 template <typename T>
@@ -131,119 +103,45 @@ private:
     T* elements;
 };
 ```
-
-当然，我们也可以将`vector<T>::clear`的定义部分放在类型之外，只不过这个时候的语法就显得蹩脚许多：
-
+Not inline version
 ```C++
 template <typename T>
 class vector
 {
 public:
-    void clear();  // 注意这里只有声明
+    void clear();  
 private:
     T* elements;
 };
 
 template <typename T>
-void vector<T>::clear()  // 函数的实现放在这里
+void vector<T>::clear() 
 {
 	// Function body
 }
 ```
+### 1.2 Basic Template Function
 
-函数的实现部分看起来略微拗口。我第一次学到的时候，觉得
-
-``` C++
-void vector::clear()
-{
-    // Function body
-}
-```
-
-这样不就行了吗？但是简单想就会知道，`clear`里面是找不到泛型类型`T`的符号的。
-
-因此，在成员函数实现的时候，必须要提供模板参数。此外，为什么类型名不是`vector`而是`vector<T>`呢？
-如果你了解过模板的偏特化与特化的语法，应该能看出，这里的vector<T>在语法上类似于特化/偏特化。实际上，这里的函数定义也确实是成员函数的偏特化。特化和偏特化的概念，本文会在第二部分详细介绍。
-
-综上，正确的成员函数实现如下所示：
-
-``` C++
-template <typename T> // 模板参数
-void vector<T> /*看起来像偏特化*/ ::clear() // 函数的实现放在这里
-{
-    // Function body
-}
-```
-
-### 1.2 Template Function的基本语法
-
-#### 1.2.1 Template Function的声明和定义
-
-模板函数的语法与模板类基本相同，也是以关键字`template`和模板参数列表作为声明与定义的开始。模板参数列表中的类型，可以出现在参数、返回值以及函数体中。比方说下面几个例子
+#### 1.2.1 Template Function declaration and definition
 
 ```C++
-template <typename T> void foo(T const& v);
+template <typename T> 
+void foo(T const& v);
 
-template <typename T> T foo();
+template <typename T> 
+T foo();
 
-template <typename T, typename U> U foo(T const&);
+template <typename T, typename U> 
+U foo(T const&);
 
-template <typename T> void foo()
+template <typename T> 
+void foo()
 {
     T var;
     // ...
 }
 ```
-
-无论是函数模板还是类模板，在实际代码中看起来都是“千变万化”的。这些“变化”，主要是因为类型被当做了参数，导致代码中可以变化的部分更多了。
-
-归根结底，模板无外乎两点：
-
-   1. 函数或者类里面，有一些类型我们希望它能变化一下，我们用标识符来代替它，这就是“模板参数”；
-
-   2. 在需要这些类型的地方，写上相对应的标识符（“模板参数”）。
-
-当然，这里的“可变”实际上在代码编译好后就固定下来了，可以称之为编译期的可变性。
-
-这里多啰嗦一点，主要也是想告诉大家，模板其实是个很简单的东西。
-
-下面这个例子，或许可以帮助大家解决以下两个问题：
-
-  1. 什么样的需求会使用模板来解决？
-
-  2. 怎样把脑海中的“泛型”变成真正“泛型”的代码？
-
-```
-举个例子：generic typed function ‘add’
-```
-
-在我遇到的朋友中，即便如此对他解释了模板，即便他了解了模板，也仍然会对模板产生畏难情绪。毕竟从形式上来说，模板类和模板函数都要较非模板的版本更加复杂，阅读代码所需要理解的内容也有所增多。
-
-如何才能克服这一问题，最终视模板如平坦代码呢？
-
-答案只有一个：**无他，唯手熟尔**。
-
-在学习模板的时候，要反复做以下的思考和练习：
-
-  1. 提出问题：我的需求能不能用模板来解决？
-
-  2. 怎么解决？
-
-  3. 把解决方案用代码写出来。
-
-  4. 如果失败了，找到原因。是知识有盲点（例如不知道怎么将 `T&` 转化成 `T`），还是不可行（比如试图利用浮点常量特化模板类，但实际上这样做是不可行的）？
-
-通过重复以上的练习，应该可以对模板的语法和含义都有所掌握。如果提出问题本身有困难，或许下面这个经典案例可以作为你思考的开始：
-
-  1. 写一个泛型的数据结构：例如，线性表，数组，链表，二叉树；
-
-  2. 写一个可以在不同数据结构、不同的元素类型上工作的泛型函数，例如求和；
-
-当然和“设计模式”一样，模板在实际应用中，也会有一些固定的需求和解决方案。比较常见的场景包括：泛型（最基本的用法）、通过类型获得相应的信息（型别萃取）、编译期间的计算、类型间的推导和变换（从一个类型变换成另外一个类型，比如boost::function）。这些本文在以后的章节中会陆续介绍。
-
-#### 1.2.2 模板函数的使用
-
-我们先来看一个简单的函数模板，两个数相加：
+#### 1.2.2 Template function usage
 
 ``` C++
 template <typename T> T Add(T a, T b)
@@ -251,65 +149,27 @@ template <typename T> T Add(T a, T b)
     return a + b;
 }
 ```
+This can still work
+``` C++
+template<typename T> T Add(T a, T b){
+    return a+b;
+}
 
-函数模板的调用格式是：
+int main()
+{
+    int a = 3;
+    char b = '4';
+    std::cout << Add<int> (a,b);
+    return 0;
+}
+```
 
 ``` C++
-函数模板名 < 模板参数列表 > ( 参数 )
-```
+template <typename T> 
+class A {};
 
-例如，我们想对两个 `int` 求和，那么套用类的模板实例化方法，我们可以这么写：
-
-``` C++
-int a = 5;
-int b = 3;
-int result = Add<int>(a, b);
-```
-
-这时我们等于拥有了一个新函数：
-
-``` C++
-int Add<int>(int a, int b) { return a + b; }
-```
-
-这时在另外一个偏远的程序角落，你也需要求和。而此时你的参数类型是 `float` ，于是你写下：
-
-``` C++
-Add<float>(a, b);
-```
-
-一切看起来都很完美。但如果你具备程序员的最佳美德——懒惰——的话，你肯定会这样想，我在调用 `Add<int>(a, b)` 的时候， `a` 和 `b` 匹配的都是那个 `T`。编译器就应该知道那个 `T` 实际上是 `int` 呀？为什么还要我多此一举写 `Add<int>` 呢？
-唔，我想说的是，编译器的作者也是这么想的。所以实际上你在编译器里面写下以下片段：
-
-``` C++
-int a = 5;
-int b = 3;
-int result = Add(a, b);
-```
-
-编译器会心领神会地将 `Add` 变成 `Add<int>`。但是编译器不能面对模棱两可的答案。比如你这么写的话呢？
-
-``` C++
-int  a = 5;
-char b = 3;
-int  result = Add(a, b);
-```
-
-第一个参数 `a` 告诉编译器，这个 `T` 是 `int`。编译器点点头说，好。但是第二个参数 `b` 不高兴了，告诉编译器说，你这个 `T`，其实是 `char`。
-两个参数各自指导 `T` 的类型，编译器就不知道怎么做了。在Visual Studio 2012下，会有这样的提示：
-
-```
-error C2782: 'T _1_2_2::Add(T,T)' : template parameter 'T' is ambiguous
-```
-
-好吧，"ambigous"，这个提示再明确不过了。
-
-不过，只要你别逼得编译器精神分裂的话，编译器其实是非常聪明的，它可以从很多的蛛丝马迹中，猜测到你真正的意图，有如下面的例子：
-
-``` C++
-template <typename T> class A {};
-
-template <typename T> T foo( A<T> v );
+template <typename T> 
+T foo( A<T> v );
 
 A<int> v;
 foo(v);	// 它能准确地猜到 T 是 int.
