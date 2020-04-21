@@ -163,57 +163,6 @@ int main()
     return 0;
 }
 ```
-
-嗯，是不是so easy啊？嗯，你又信心满满的做了一个练习：
-
-你要写一个模板函数叫 `c_style_cast`，顾名思义，执行的是C风格的转换。然后出于方便起见，你希望它能和 `static_cast` 这样的内置转换有同样的写法。于是你写了一个use case。
-
-``` C++
-DstT dest = c_style_cast<DstT>(src);
-```
-
-根据调用形式你知道了，有 `DstT` 和 `SrcT` 两个模板参数。参数只有一个， `src`，所以函数的形参当然是这么写了： `(SrcT src)`。实现也很简单， `(DstT)v`。
-
-我们把手上得到的信息来拼一拼，就可以编写自己的函数模板了：
-
-``` C++
-template <typename SrcT, typename DstT> DstT c_style_cast(SrcT v)
-{
-    return (DstT)(v);
-}
-
-int v = 0;
-float i = c_style_cast<float>(v);
-```
-
-嗯，很Easy嘛！我们F6一下…咦！这是什么意思！
-
-``` C++
-error C2783: 'DstT _1_2_2::c_style_cast(SrcT)' : could not deduce template argument for 'DstT'
-```
-
-然后你仔细的比较了一下，然后发现 … 模板参数有两个，而参数里面能得到的只有 `SrcT` 一个。结合出错信息看来关键在那个 `DstT` 上。这个时候，你死马当活马医，把模板参数写完整了：
-
-``` C++
-float i = c_style_cast<int, float>(v);
-```
-
-嗯，很顺利的通过了。难道C++不能支持让参数推导一部分模板参数吗？
-
-当然是可以的。只不过在部分推导、部分指定的情况下，编译器对模板参数的顺序是有限制的：**先写需要指定的模板参数，再把能推导出来的模板参数放在后面**。
-
-在这个例子中，能推导出来的是 `SrcT`，需要指定的是 `DstT`。把函数模板写成下面这样就可以了：
-
-``` C++
-template <typename DstT, typename SrcT> DstT c_style_cast(SrcT v)	// 模板参数 DstT 需要人肉指定，放前面。
-{
-    return (DstT)(v);
-}
-
-int v = 0;
-float i = c_style_cast<float>(v);  // 形象地说，DstT会先把你指定的参数吃掉，剩下的就交给编译器从函数参数列表中推导啦。
-```
-
 ### 1.3 整型也可是Template参数
 
 模板参数除了类型外（包括基本类型、结构、类类型等），也可以是一个整型数（Integral Number）。这里的整型数比较宽泛，包括布尔型，不同位数、有无符号的整型，甚至包括指针。我们将整型的模板参数和类型作为模板参数来做一个对比：
