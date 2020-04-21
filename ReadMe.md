@@ -164,40 +164,6 @@ int main()
 }
 ```
 
-``` C++
-template <typename T> 
-class A {};
-
-template <typename T> 
-T foo( A<T> v );
-
-A<int> v;
-foo(v);	// 它能准确地猜到 T 是 int.
-```
-
-咦，编译器居然绕过了A这个外套，猜到了 `T` 匹配的是 `int`。编译器是怎么完成这一“魔法”的，我们暂且不表，2.2节时再和盘托出。
-
-下面轮到你的练习时间了。你试着写了很多的例子，但是其中一个你还是犯了疑惑：
-
-``` C++
-float data[1024];
-
-template <typename T> T GetValue(int i)
-{
-    return static_cast<T>(data[i]);
-}
-
-float a = GetValue(0);	// 出错了！
-int b = GetValue(1);	// 也出错了！
-```
-
-为什么会出错呢？你仔细想了想，原来编译器是没办法去根据返回值推断类型的。函数调用的时候，返回值被谁接受还不知道呢。如下修改后，就一切正常了：
-
-``` C++
-float a = GetValue<float>(0);
-int b = GetValue<int>(1);
-```
-
 嗯，是不是so easy啊？嗯，你又信心满满的做了一个练习：
 
 你要写一个模板函数叫 `c_style_cast`，顾名思义，执行的是C风格的转换。然后出于方便起见，你希望它能和 `static_cast` 这样的内置转换有同样的写法。于是你写了一个use case。
