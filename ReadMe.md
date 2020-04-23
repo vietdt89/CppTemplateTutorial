@@ -227,8 +227,7 @@ template <float a> class E {}; // ERROR:only integer
 ```
 
 ## 2.  Basic meta programming
-### 2.1 Meta programming
-Let's look at an example
+Let's look at an example for basic Stack implementation using template
 ``` C++
 template <typename T>
 class Stack
@@ -243,70 +242,12 @@ public:
             if(data[i] == x) { return i; }
         }
     }
-    // ... 其他代码 ...
 };
 
 typedef Stack<int>   StackInt;
 typedef Stack<float> StackFloat;
 ```
-
-通过模板，我们可以将形形色色的堆栈代码分为两个部分，一个部分是不变的接口，以及近乎相同的现；另外一部分是元素的类型，它们是需要变化的。因此同函数类似，需要变化的部分，由模板参数来反映；不变的部分，则是模板内的代码。可以看到，使用模板的代码，要比不使用模板的代码简洁许多。
-
-如果元编程中所有变化的量（或者说元编程的参数），都是类型，那么这样的编程，我们有个特定的称呼，叫“泛型”。
-
-但是你会问，模板的发明，仅仅是为了做和宏几乎一样的替换工作吗？可以说是，也可以说不是。一方面，很多时候模板就是为了替换类型，这个时候作用上其实和宏没什么区别。只是宏是基于文本的替换，被替换的文本本身没有任何语义。只有替换完成，编译器才能进行接下来的处理。而模板会在分析模板时以及实例化模板时时候都会进行检查，而且源代码中也能与调试符号一一对应，所以无论是编译时还是运行时，排错都相对简单。
-
-但是模板和宏也有很大的不同，否则此文也就不能成立了。模板最大的不同在于它是“可以运算”的。我们来举一个例子，不过可能有点牵强。考虑我们要写一个向量逐分量乘法。只不过这个向量，它非常的大。所以为了保证速度，我们需要使用SIMD指令进行加速。假设我们有以下指令可以使用：
-
-```
-Int8,16: N/A
-Int32  : VInt32Mul(int32x4, int32x4)
-Int64  : VInt64Mul(int64x4, int64x4)
-Float  : VInt64Mul(floatx2, floatx2)
-```
-所以对于Int8和Int16，我们需要提升到Int32，而Int32和Int64，各自使用自己的指令。所以我们需要实现下的逻辑：
-
-``` C++
-for(v4a, v4b : vectorsA, vectorsB)
-{
-    if type is Int8, Int16
-		VInt32Mul( ConvertToInt32(v4a), ConvertToInt32(v4b) )
-	elif type is Int32
-		VInt32Mul( v4a, v4b )
-	elif type is Float
-		...
-}
-```
-
-这里的问题就在于，如何根据 `type` 分别提供我们需要的实现？这里有两个难点。首先， `if(type == xxx) {}` 是不存在于C++中的。第二，即便存在根据 `type` 的分配方法，我们也不希望它在运行时branch，这样会变得很慢。我们希望它能按照类型直接就把代码编译好，就跟直接写的一样。
-
-嗯，聪明你果然想到了，重载也可以解决这个问题。
-
-``` C++
-GenericMul(int8x4,  int8x4);
-GenericMul(int16x4, int16x4);
-GenericMul(int32x4, int32x4);
-GenericMul(int64x4, int64x4);
-// 其它 Generic Mul ...
-
-for(v4a, v4b : vectorsA, vectorsB)
-{
-    GenericMul(v4a, v4b);
-}
-
-```
-
-这样不就可以了吗？
-
-唔，你赢了，是这样没错。但是问题是，我这个平台是你可没见过，它叫 `Deep Thought`， 特别缺心眼儿，不光有 `int8`，还有更奇怪的 `int9`, `int11`，以及可以代表世间万物的 `int42`。你总不能为之提供所有的重载吧？这简直就像你枚举了所有程序的输入，并为之提供了对应的输出一样。
-
-好吧，我承认这个例子还是太牵强了。不过相信我，在你阅读完第二章和第三章之后，你会将这些特性自如地运用到你的程序之中。你的程序将会变成体现模板“可运算”威力的最好例子。
-
-### 2.2 模板世界的If-Then-Else：类模板的特化与偏特化
-
-#### 2.2.1 根据类型执行代码
-前一节的示例提出了一个要求：需要做出根据类型执行不同代码。要达成这一目的，模板并不是唯一的途径。比如之前我们所说的重载。如果把眼界放宽一些，虚函数也是根据类型执行代码的例子。此外，在C语言时代，也会有一些技法来达到这个目的，比如下面这个例子，我们需要对两个浮点做加法， 或者对两个整数做乘法：
-
+Look at the example
 ``` C
 struct Variant
 {
@@ -334,9 +275,7 @@ Variant addFloatOrMulInt(Variant const* a, Variant const* b)
 }
 
 ```
-
-更常见的是 `void*`:
-
+More common problem
 ``` C++
 #define BIN_OP(type, a, op, b, result) (*(type *)(result)) = (*(type const *)(a)) op (*(type const*)(b))
 void doDiv(void* out, void const* data0, void const* data1, DATA_TYPE type)
@@ -351,70 +290,8 @@ void doDiv(void* out, void const* data0, void const* data1, DATA_TYPE type)
     }
 }
 ```
-
-在C++中比如在 `Boost.Any` 的实现中，运用了 `typeid` 来查询类型信息。和 `typeid` 同属于RTTI机制的 `dynamic_cast`，也经常会用来做类型判别的工作。我想你应该写过类似于下面的代码：
-
+Pseudo code
 ``` C++
-IAnimal* animal = GetAnimalFromSystem();
-
-IDog* maybeDog = dynamic_cast<IDog*>(animal);
-if(maybeDog)
-{
-    maybeDog->Wangwang();
-}
-ICat* maybeCat = dynamic_cast<ICat*>(animal);
-if(maybeCat)
-{
-    maybeCat->Moemoe();
-}
-```
-
-当然，在实际的工作中，我们建议把需要 `dynamic_cast` 后执行的代码，尽量变成虚函数。不过这个已经是另外一个问题了。我们看到，不管是哪种方法都很难避免 `if` 的存在。而且因为输入数据的类型是模糊的，经常需要强制地、没有任何检查的转换成某个类型，因此很容易出错。
-
-但是模板与这些方法最大的区别并不在这里。模板无论其参数或者是类型，它都是一个编译期分派的办法。编译期就能确定的东西既可以做类型检查，编译器也能进行优化，砍掉任何不必要的代码执行路径。例如在上例中，
-
-``` C++
-template <typename T> T addFloatOrMulInt(T a, T b);
-
-// 迷之代码1：用于T是float的情况
-
-// 迷之代码2：用于T是int时的情况
-```
-
-如果你运用了模板来实现，那么当传入两个不同类型的变量，或者不是 `int` 和 `float` 变量，编译器就会提示错误。但是如果使用了我们前述的 `Variant` 来实现，编译器可就管不了那么多了。但是，成也编译期，败也编译期。最严重的“缺点”，就是你没办法根据用户输入或者别的什么在运行期间可能发生变化的量来决定它产生、或执行什么代码。比如下面的代码段，它是不成立的。
-
-``` C++
-template <int i, int j>
-int foo() { return i + j; }
-int main()
-{
-    cin >> x >> y;
-    return foo<x, y>();
-}
-```
-
-这点限制也粉碎了妄图用模板来包办工厂（Factory）甚至是反射的梦想。尽管在《Modern C++ Design》中（别问我为什么老举这本书，因为《C++ Templates》和《Generic Programming》我只是囫囵吞枣读过，基本不记得了)大量运用模板来简化工厂方法；同时C++11/14中的一些机制如Variadic Template更是让这一问题的解决更加彻底。但无论如何，直到C++11/14，光靠模板你就是写不出依靠类名或者ID变量产生类型实例的代码。
-
-所以说，从能力上来看，模板能做的事情都是编译期完成的。编译期完成的意思就是，当你编译一个程序的时候，所有的量就都已经确定了。比如下面的这个例子：
-
-``` C++
-int a = 3, b = 5;
-Variant aVar, bVar;
-aVar.setInt(a);			// 我们新加上的方法，怎么实现的无所谓，大家明白意思就行了。
-bVar.setInt(b);
-Variant result = addFloatOrMulInt(aVar, bVar);
-```
-
-除非世界末日，否则这个例子里不管你怎么蹦跶，单看代码我们就能知道， `aVar` 和 `bVar` 都一定会是整数。所以如果有合适的机制，编译器就能知道此处的 `addFloatOrMulInt` 中只需要执行 `Int` 路径上的代码，而且编译器在此处也能单独为 `Int` 路径生成代码，从而去掉那个不必要的 `if`。
-
-在模板代码中，这个“合适的机制”就是指“特化”和“部分特化（Partial Specialization）”，后者也叫“偏特化”。
-
-#### 2.2.2 特化
-
-我的高中物理老师对我说过一句令我受用至今的话：把自己能做的事情做好。编写模板程序也是一样。当你试图用模板解决问题之前，先撇开那些复杂的语法要素，用最直观的方式表达你的需求：
-
-``` C++
-// 这里是伪代码，意思一下
 
 int|float addFloatOrMulInt(a, b)
 {
@@ -437,11 +314,7 @@ void foo()
     z = addFloatOrMulInt(x, y);		// z = x * y;
 }
 ```
-
-因为这一节是讲类模板有关的特化和偏特化机制，所以我们不用普通的函数，而是用类的静态成员函数来做这个事情（这就是典型的没事找抽型）：
-
 ``` C++
-// 这里仍然是伪代码，意思一下，too。
 class AddFloatOrMulInt
 {
     static int|float Do(a, b)
@@ -467,8 +340,6 @@ void foo()
 }
 ```
 
-好，意思表达清楚了。我们先从调用方的角度，把这个形式改写一下：
-
 ``` C++
 void foo()
 {
@@ -479,7 +350,6 @@ void foo()
     z = AddFloatOrMulInt<int>::Do(x, y); // z = x * y;
 }
 ```
-也许你不明白为什么要改写成现在这个样子。看不懂不怪你，怪我讲得不好。但是你别急，先看看这样改写以后能不能跟我们的目标接近一点。如果我们把 `AddFloatOrMulInt<float>::Do` 看作一个普通的函数，那么我们可以写两个实现出来：
 
 ``` C++
 float AddFloatOrMulInt<float>::Do(float a, float b)
