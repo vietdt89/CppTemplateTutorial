@@ -247,7 +247,7 @@ public:
 typedef Stack<int>   StackInt;
 typedef Stack<float> StackFloat;
 ```
-Look at the example
+Look at the example. We want to addFloatOrMulInt to behave differently on int/float input
 ``` C
 struct Variant
 {
@@ -290,102 +290,21 @@ void doDiv(void* out, void const* data0, void const* data1, DATA_TYPE type)
     }
 }
 ```
-Pseudo code
-``` C++
 
-int|float addFloatOrMulInt(a, b)
-{
-    if(type is Int)
-    {
-        return a * b;
-    }
-    else if (type is Float)
-    {
-        return a + b;
-    }
-}
+Sovle the problem by template：
 
-void foo()
-{
-    float a, b, c;
-    c = addFloatOrMulInt(a, b);		// c = a + b;
-	
-    int x, y, z;
-    z = addFloatOrMulInt(x, y);		// z = x * y;
-}
-```
 ``` C++
+template <typename T> 
 class AddFloatOrMulInt
 {
-    static int|float Do(a, b)
-    {
-        if(type is Int)
-        {
-            return a * b;
-        }
-        else if (type is Float)
-	{
-	    return a + b;
-        }
-    }
-};
-
-void foo()
-{
-    float a, b, c;
-    c = AddFloatOrMulInt::Do(a, b); // c = a + b;
-	
-    int x, y, z;
-    z = AddFloatOrMulInt::Do(x, y); // z = x * y;
-}
-```
-
-``` C++
-void foo()
-{
-    float a, b, c;
-    c = AddFloatOrMulInt<float>::Do(a, b); // c = a + b;
-	
-    int x, y, z;
-    z = AddFloatOrMulInt<int>::Do(x, y); // z = x * y;
-}
-```
-
-``` C++
-float AddFloatOrMulInt<float>::Do(float a, float b)
-{
-    return a + b;
-}
-
-int AddFloatOrMulInt<int>::Do(int a, int b)
-{
-    return a * b;
-}
-
-void foo()
-{
-    float a, b, c;
-    c = AddFloatOrMulInt<float>::Do(a, b); // c = a + b;
-	
-    int x, y, z;
-    z = AddFloatOrMulInt<int>::Do(x, y); // z = x * y;
-}
-```
-
-这样是不是就很开心了？我们更进一步，把 `AddFloatOrMulInt<int>::Do` 换成合法的类模板：
-
-``` C++
-// 这个是给float用的。
-template <typename T> class AddFloatOrMulInt
-{
     T Do(T a, T b)
     {
         return a + b;
     }
 };
 
-// 这个是给int用的。
-template <typename T> class AddFloatOrMulInt
+template <typename T> 
+class AddFloatOrMulInt
 {
     T Do(T a, T b)
     {
@@ -397,30 +316,21 @@ void foo()
 {
     float a, b, c;
 
-    // 嗯，我们需要 c = a + b;
     c = AddFloatOrMulInt<float>::Do(a, b);
-    // ... 觉得哪里不对劲 ...
-    // ...
-    // ...
-    // ...
-    // 啊！有两个AddFloatOrMulInt，class看起来一模一样，要怎么区分呢！
 }
 ```
-好吧，问题来了！如何要让两个内容不同，但是模板参数形式相同的类进行区分呢？特化！特化（specialization）是根据一个或多个特殊的整数或类型，给出模板实例化时的一个指定内容。我们先来看特化是怎么应用到这个问题上的。
 ``` C++
-// 首先，要写出模板的一般形式（原型）
-template <typename T> class AddFloatOrMulInt
+template <typename T> 
+class AddFloatOrMulInt
 {
     static T Do(T a, T b)
     {
-        // 在这个例子里面一般形式里面是什么内容不重要，因为用不上
-        // 这里就随便给个0吧。
         return T(0);
     }
 };
 
-// 其次，我们要指定T是int时候的代码，这就是特化：
-template <> class AddFloatOrMulInt<int>
+template <> 
+class AddFloatOrMulInt<int>
 {
 public:
     static int Do(int a, int b) // 
@@ -429,8 +339,8 @@ public:
     }
 };
 
-// 再次，我们要指定T是float时候的代码：
-template <> class AddFloatOrMulInt<float>
+template <> 
+class AddFloatOrMulInt<float>
 {
 public:
     static float Do(float a, float b)
@@ -440,83 +350,41 @@ public:
 };
 
 void foo()
-{
-    // 这里面就不写了
-}
-```
-我们再把特化的形式拿出来一瞧：这货有点怪啊： `template <> class AddFloatOrMulInt<int>`。别急，我给你解释一下。
-
-``` C++
-// 我们这个模板的基本形式是什么？
-template <typename T> class AddFloatOrMulInt;
-
-// 但是这个类，是给T是Int的时候用的，于是我们写作
-class AddFloatOrMulInt<int>;
-// 当然，这里编译是通不过的。
-
-// 但是它又不是个普通类，而是类模板的一个特化（特例）。
-// 所以前面要加模板关键字template，
-// 以及模板参数列表
-template </* 这里要填什么？ */> class AddFloatOrMulInt<int>;
-
-// 最后，模板参数列表里面填什么？因为原型的T已经被int取代了。所以这里就不能也不需要放任何额外的参数了。
-// 所以这里放空。
-template <> class AddFloatOrMulInt<int>
-{
-    // ... 针对Int的实现 ... 
-};
-
-// Bingo!
+{}
 ```
 
-哈，这样就好了。我们来做一个练习。我们有一些类型，然后你要用模板做一个对照表，让类型对应上一个数字。我先来做一个示范：
-
 ``` C++
-
-template <typename T> class TypeToID
+template <typename T> 
+class TypeToID
 {
 public:
     static int const ID = -1;
 };
 
-template <> class TypeToID<uint8_t>
+template <> 
+class TypeToID<uint8_t>
 {
 public:
     static int const ID = 0;
 };
 ```
-
-然后呢，你的任务就是，要所有无符号的整数类型的特化（其实就是`uint8_t`到`uint64_t`啦），把所有的基本类型都赋予一个ID（当然是不一样的啦）。当你做完后呢，可以把类型所对应的ID打印出来，我仍然以 `uint8_t` 为例：
-
+ID is like a function executed in compile time
 ``` C++
 void PrintID()
 {
     cout << "ID of uint8_t: " << TypeToID<uint8_t>::ID << endl;
 }
 ```
-嗯，看起来挺简单的，是吧。但是这里透露出了一个非常重要的信号，我希望你已经能察觉出来了： `TypeToID` 如同是一个函数。这个函数只能在编译期间执行。它输入一个类型，输出一个ID。
-
-如果你体味到了这一点，那么恭喜你，你的模板元编程已经开悟了。
-
-#### 2.2.3 特化：一些其它问题
-
-在上一节结束之后，你一定做了许多的练习。我们再来做三个练习。第一，给`float`一个ID；第二，给`void*`一个ID；第三，给任意类型的指针一个ID。先来做第一个:
-
+#### 2.2.3 Special case
 ``` C++
-// ...
-// TypeToID 的模板“原型”
-// ...
-
-template <> class TypeToID<float>
+template <> 
+class TypeToID<float>
 {
     static int const ID = 0xF10A7;
 };
-```
 
-嗯， 这个你已经了然于心了。那么`void*`呢？你想了想，这已经是一个复合类型了。不错你还是战战兢兢地写了下来：
-
-``` C++
-template <> class TypeToID<void*>
+template <> 
+class TypeToID<void*>
 {
     static int const ID = 0x401d;
 };
@@ -527,24 +395,20 @@ void PrintID()
 }
 ```
 
-遍译运行一下，对了。模板不过如此嘛。然后你觉得自己已经完全掌握了，并试图将所有C++类型都放到模板里面，开始了自我折磨的过程：
-
 ``` C++
 class ClassB {};
 
-template <> class TypeToID<void ()>;      // 函数的TypeID
-template <> class TypeToID<int[3]>;       // 数组的TypeID
-template <> class TypeToID<int (int[3])>; // 这是以数组为参数的函数的TypeID
-template <> class TypeToID<int (ClassB::*[3])(void*, float[2])>; // 我也不知道这是什么了，自己看着办吧。
+template <> 
+class TypeToID<void ()>;  
+template <> 
+class TypeToID<int[3]>;      
+template <> 
+class TypeToID<int (int[3])>; 
+template <> 
+class TypeToID<int (ClassB::*[3])(void*, float[2])>; 
+template <> 
+class TypeToID<int const * volatile * const volatile>;
 ```
-
-甚至连 `const` 和 `volatile` 都能装进去：
-
-``` C++
-template <> class TypeToID<int const * volatile * const volatile>;
-```
-
-此时就很明白了，只要 `<>` 内填进去的是一个C++能解析的合法类型，模板都能让你特化。不过这个时候如果你一点都没有写错的话， `PrintID` 中只打印了我们提供了特化的类型的ID。那如果我们没有为之提供特化的类型呢？比如说double？OK，实践出真知，我们来尝试着运行一下：
 
 ``` C++
 void PrintID()
@@ -552,10 +416,7 @@ void PrintID()
     cout << "ID of double: " << TypeToID<double>::ID << endl;
 }
 ```
-
-嗯，它输出的是-1。我们顺藤摸瓜会看到， `TypeToID`的类模板“原型”的ID是值就是-1。通过这个例子可以知道，当模板实例化时提供的模板参数不能匹配到任何的特化形式的时候，它就会去匹配类模板的“原型”形式。
-
-不过这里有一个问题要理清一下。和继承不同，类模板的“原型”和它的特化类在实现上是没有关系的，并不是在类模板中写了 `ID` 这个Member，那所有的特化就必须要加入 `ID` 这个Member，或者特化就自动有了这个成员。完全没这回事。我们把类模板改成以下形式，或许能看的更清楚一点：
+The output is -1 because there's no template for double type. 
 
 ``` C++
 template <typename T> class TypeToID
@@ -573,14 +434,10 @@ public:
 void PrintID()
 {
     cout << "ID of float: " << TypeToID<float>::ID << endl;       // Print "1"
-    cout << "NotID of float: " << TypeToID<float>::NotID << endl; // Error! TypeToID<float>使用的特化的类，这个类的实现没有NotID这个成员。
-    cout << "ID of double: " << TypeToID<double>::ID << endl;     // Error! TypeToID<double>是由模板类实例化出来的，它只有NotID，没有ID这个成员。
+    cout << "NotID of float: " << TypeToID<float>::NotID << endl; // Error! no NotID for float type
+    cout << "ID of double: " << TypeToID<double>::ID << endl;     // Error! no ID for default type 
 }
 ```
-
-这样就明白了。类模板和类模板的特化的作用，仅仅是指导编译器选择哪个编译，但是特化之间、特化和它原型的类模板之间，是分别独立实现的。所以如果多个特化、或者特化和对应的类模板有着类似的内容，很不好意思，你得写上若干遍了。
-
-第三个问题，是写一个模板匹配任意类型的指针。对于C语言来说，因为没有泛型的概念，因此它提供了无类型的指针`void*`。它的优点是，所有指针都能转换成它。它的缺点是，一旦转换称它后，你就再也不知道这个指针到底是指向`float`或者是`int`或者是`struct`了。
 
 比如说`copy`。
 
