@@ -471,7 +471,7 @@ class TypeToID<T*>
 {
 public:
     typedef T		 SameAsT;
-    static int const ID = 0x80000000; // 用最高位表示它是一个指针
+    static int const ID = 0x80000000; 
 };
 
 void PrintID()
@@ -485,27 +485,26 @@ template <typename T>
 class RemovePointer
 {
 public:
-    typedef T Result;  // 如果放进来的不是一个指针，那么它就是我们要的结果。
+    typedef T Result;  
 };
 
 template <typename T>
-class RemovePointer<T*>	// 祖传牛皮藓，专治各类指针
+class RemovePointer<T*>	
 {
 public:
-    typedef T Result;  // 正如我们刚刚讲的，去掉一层指针，把 T* 这里的 T 取出来。
+    typedef T Result;  
 };
 
 void Foo()
 {
-    RemovePointer<float*>::Result x = 5.0f; // 喏，用RemovePointer后，那个Result就是把float*的指针处理掉以后的结果：float啦。
+    RemovePointer<float*>::Result x = 5.0f;
     std::cout << x << std::endl;
 }
 ```
 
-当然啦，这里我们实现的不算是真正的 `RemovePointer`，因为我们只去掉了一层指针。而如果传进来的是类似 `RemovePointer<int**>` 这样的东西呢？是的没错，去掉一层之后还是一个指针。`RemovePointer<int**>::Result` 应该是一个 `int*`，要怎么才能实现我们想要的呢？聪明的你一定能想到：只要像剥洋葱一样，一层一层一层地剥开，不就好了吗！相应地我们应该怎么实现呢？可以把 `RemovePointer` 的特化版本改成这样（当然如果有一些不明白的地方你可以暂时跳过，接着往下看，很快就会明白的）：
-
 ``` C++
 template <typename T>
+
 class RemovePointer<T*>
 {
 public:
@@ -515,15 +514,6 @@ public:
     typedef typename RemovePointer<T>::Result Result;
 };
 ```
-
-是的没错，这便是我们想要的 `RemovePointer` 的样子。类似的你还可以试着实现 `RemoveConst`, `AddPointer` 之类的东西。
-
-OK，回到我们之前的话题，如果这个时候，我需要给 `int*` 提供一个更加特殊的特化，那么我还得多提供一个：
-
-``` C++
-// ...
-// TypeToID 的其他代码，略过不表
-// ...
 
 template <typename T> // 嗯，需要一个T
 class TypeToID<T*>    // 我要对所有的指针类型特化，所以这里就写T*
