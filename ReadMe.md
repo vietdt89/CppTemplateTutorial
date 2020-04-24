@@ -438,52 +438,7 @@ void PrintID()
     cout << "ID of double: " << TypeToID<double>::ID << endl;     // Error! no ID for default type 
 }
 ```
-
-比如说`copy`。
-
-``` C
-void copy(void* dst, void const* src, size_t elemSize, size_t elemCount, void (*copyElem)(void* dstElem, void const* srcElem))
-{
-    void const* reader = src;
-    void const* writer = dst;
-    for(size_t i = 0; i < elemCount; ++i)
-    {
-        copyElem(writer, reader);
-        advancePointer(reader, elemSize); // 把Reader指针往后移动一些字节
-        advancePointer(writer, elemSize);
-     }
-}
-```
-
-为什么要提供copyElem，是因为可能有些struct需要深拷贝，所以得用特殊的copy函数。这个在C++98/03里面就体现为拷贝构造和赋值函数。
-
-但是不管怎么搞，因为这个函数的参数只是`void*`而已，当你使用了错误的elemSize，或者传入了错误的copyElem，就必须要到运行的时候才有可能看出来。注意，这还只是有可能而已。
-
-那么C++有了模板后，能否既能匹配任意类型的指针，同时又保留了类型信息呢？答案是显然的。至于怎么写，那就得充分发挥你的直觉了：
-
-首先，我们需要一个`typename T`来指代“任意类型”这四个字：
-
-``` C++
-template <typename T>
-```
-
-接下来，我们要写函数原型：
-
-``` C++
-void copy(?? dest, ?? src, size_t elemCount);
-```
-
-这里的 `??` 要怎么写呢？既然我们有了模板类型参数T，那我们不如就按照经验，写 `T*` 看看。
-
-``` C++
-template <typename T>
-void copy(T* dst, T const* src, size_t elemCount);
-```
-
-编译一下，咦，居然通过了。看来这里的语法与我们以前学到的知识并没有什么不同。这也是语言设计最重要的一点原则：一致性。它可以让你辛辛苦苦体验到的规律不至于白费。
-
-最后就是实现：
-
+Copy function using template
 ``` C++
 template <typename T>
 void copy(T* dst, T const* src, size_t elemCount)
@@ -495,21 +450,14 @@ void copy(T* dst, T const* src, size_t elemCount)
 }
 ```
 
-是不是简洁了许多？你不需要再传入size；只要你有正确的赋值函数，也不需要提供定制的copy；也不用担心dst和src的类型不匹配了。
-
-最后，我们把函数模板学到的东西，也应用到类模板里面：
-
 ``` C++
-template <typename T> // 嗯，需要一个T
-class TypeToID<T*> // 我要对所有的指针类型特化，所以这里就写T*
+template <typename T> 
+class TypeToID<T*> 
 {
 public:
  static int const ID = 0x80000000;	// 用最高位表示它是一个指针
 };
 ```
-
-最后写个例子来测试一下，看看我们的 `T*` 能不能搞定 `float*`：
-
 ``` C++
 void PrintID()
 {
@@ -517,15 +465,9 @@ void PrintID()
 }
 ```
 
-哈哈，大功告成。嗯，别急着高兴。待我问一个问题：你知道 `TypeToID<float*>` 后，这里的T是什么吗？换句话说，你知道下面这段代码打印的是什么吗？
-
 ``` C++
-// ...
-// TypeToID 的其他代码，略过不表
-// ...
-
-template <typename T> // 嗯，需要一个T
-class TypeToID<T*> // 我要对所有的指针类型特化，所以这里就写T*
+template <typename T> 
+class TypeToID<T*> 
 {
 public:
     typedef T		 SameAsT;
@@ -537,14 +479,6 @@ void PrintID()
 	cout << "ID of float*: " << TypeToID< TypeToID<float*>::SameAsT >::ID << endl;
 }
 ```
-
-别急着运行，你先猜。
-
--------------------------  这里是给勤于思考的码猴的分割线  -------------------------------
-
-OK，猜出来了吗，T是`float`。为什么呢？因为你用 `float *` 匹配了 `T *`，所以 `T` 就对应 `float` 了。没想清楚的自己再多体会一下。
-
-嗯，所以实际上，我们可以利用这个特性做一件事情：把指针类型的那个指针给“干掉”：
 
 ``` C++
 template <typename T>
