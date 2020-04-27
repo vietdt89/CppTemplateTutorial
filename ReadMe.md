@@ -482,13 +482,6 @@ void PrintID()
 
 ``` C++
 template <typename T>
-class RemovePointer
-{
-public:
-    typedef T Result;  
-};
-
-template <typename T>
 class RemovePointer<T*>	
 {
 public:
@@ -501,47 +494,6 @@ void Foo()
     std::cout << x << std::endl;
 }
 ```
-
-``` C++
-template <typename T>
-
-class RemovePointer<T*>
-{
-public:
-    // 如果是传进来的是一个指针，我们就剥夺一层，直到指针形式不存在为止。
-    // 例如 RemovePointer<int**>，Result 是 RemovePointer<int*>::Result，
-    // 而 RemovePointer<int*>::Result 又是 int，最终就变成了我们想要的 int，其它也是类似。
-    typedef typename RemovePointer<T>::Result Result;
-};
-```
-
-template <typename T> // 嗯，需要一个T
-class TypeToID<T*>    // 我要对所有的指针类型特化，所以这里就写T*
-{
-public:
-    typedef T SameAsT;
-    static int const ID = 0x80000000; // 用最高位表示它是一个指针
-};
-
-template <> // 嗯，int* 已经是个具体的不能再具体的类型了，所以模板不需要额外的类型参数了
-class TypeToID<int*> // 嗯，对int*的特化。在这里呢，要把int*整体看作一个类型
-{
-public:
-    static int const ID = 0x12345678; // 给一个缺心眼的ID
-};
-
-void PrintID()
-{
-    cout << "ID of int*: " << TypeToID<int*>::ID << endl;
-}
-```
-
-嗯，这个时候它会输出0x12345678的十进制（大概？）。
-可能会有较真的人说，`int*` 去匹配 `T` 或者 `T*`，也是合法的。就和你说22岁以上能结婚，那24岁当然也能结婚一样。
-那为什么 `int*` 就会找 `int*`，`float *`因为没有合适的特化就去找 `T*`，更一般的就去找 `T` 呢？废话，有专门为你准备的东西你不用，非要自己找事？这就是直觉。
-但是呢，直觉对付更加复杂的问题还是没用的（也不是没用，主要是你没这个直觉了）。我们要把这个直觉，转换成合理的规则——即模板的匹配规则。
-当然，这个匹配规则是对复杂问题用的，所以我们会到实在一眼看不出来的时候才会动用它。一开始我们只要把握：**模板是从最特殊到最一般形式进行匹配的** 就可以了。
-
 ### 2.3 即用即推导
 
 #### 2.3.1 视若无睹的语法错误
