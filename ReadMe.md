@@ -497,235 +497,27 @@ void Foo()
 ### 2.3 即用即推导
 ```C++
 int a;
-struct B { int v; }
+struct B { int v; };
 template <typename T> struct X {
-    B b;                  // B 是第三类名字，b 是第一类
-    T t;                  // T 是第二类
-    X* anthor;            // X 这里代指 X<T>，第一类
-    typedef int Y;        // int 是第三类
-    Y y;                  // Y 是第一类
-    C c;                  // C 什么都不是，编译错误。
+    B b;
+    T t;
+    X* anthor;
+    typedef int Y;
+    Y y;
     void foo() {
-       b.v += y;          // b 是第一类，非依赖性名称
-       b.v *= T::s_mem;   // T::s_mem 是第二类
-                          // s_mem的作用域由T决定
-                          // 依赖性名称，类型依赖
-    }
-};
-```
-
-所以，按照标准的意思，名称查找会在模板定义和实例化时各做一次，分别处理非依赖性名称和依赖性名称的查找。这就是“两阶段名称查找”这一名词的由来。只不过这个术语我也不知道是谁发明的，它并没有出现的标准上，但是频繁出现在StackOverflow和Blog上。
-
-接下来，我们就来解决2.3.1节中留下的几个问题。
-
-先看第四个问题。为什么MSVC中，模板函数的定义内不管填什么编译器都不报错？因为MSVC在分析模板中成员函数定义时没有做任何事情。至于为啥连“大王叫我来巡山”都能过得去，这是C++语法/语义分析的特殊性导致的。
-C++是个非常复杂的语言，以至于它的编译器，不可能通过词法-语法-语义多趟分析清晰分割，因为它的语义将会直接干扰到语法：
-
-```C++
-void foo(){
-    A<T> b;
-}
-```
-在这段简短的代码中，就包含了两个歧义的可能，一是`A`是模板，于是`A<T>`是一个实例化的类型，`b`是变量，另外一种是比较表达式（Comparison Expression）的组合，`((A < T) > b)`。
-
-甚至词法分析也会受到语义的干扰，C++11中才明确被修正的`vector<vector<int>>`，就因为`>>`被误解为右移或流操作符，而导致某些编译器上的错误。因此，在语义没有确定之前，连语法都没有分析的价值。
-
-大约是基于如此考量，为了偷懒，MSVC将包括所有模板成员函数的语法/语义分析工作都挪到了第二个Phase，于是乎连带着语法分析都送进了第二个阶段。符合标准么？显然不符合。
-
-但是这里值得一提的是，MSVC的做法和标准相比，虽然投机取巧，但并非有弊无利。我们来先说一说坏处。考虑以下例子：
-```C++
-// ----------- X.h ------------
-
-template <typename T> struct X {
-      // 实现代码
-};
-
-// ---------- X.cpp -----------
-
-// ... 一些代码 ...
-X<int> xi; 
-// ... 一些代码 ...
-X<float> xf;
-// ... 一些代码 ...
-```
-此时如果X中有一些与模板参数无关的错误，如果名称查找/语义分析在两个阶段完成，那么这些错误会很早、且唯一的被提示出来；但是如果一切都在实例化时处理，那么可能会导致不同的实例化过程提示同样的错误。而模板在运用过程中，往往会产生很多实例，此时便会大量报告同样的错误。
-
-当然，MSVC并不会真的这么做。根据推测，最终他们是合并了相同的错误。因为即便对于模板参数相关的编译错误，也只能看到最后一次实例化的错误信息：
-```C++
-template <typename T> struct X {};
-	
-template <typename T> struct Y
-{
-    typedef X<T> ReboundType; // 类型定义1
-    void foo()
-    {
-        X<T> instance0;
-        X<T>::MemberType instance1;
-        WTF instance2
+       b.v += y;
+       b.v *= T::s_mem;   //no error
     }
 };
 
-void poo(){
-    Y<int>::foo();
-    Y<float>::foo();
-}
-```
+struct X<int> x; // no error
 
-MSVC下和模板相关的错误只有一个：
-```
-error C2039: 'MemberType': is not a member of 'X<T>'
-          with
-          [
-              T=float
-          ]
-```
-然后是一些语法错误，比如`MemberType`不是一个合法的标识符之类的。这样甚至你会误以为`int`情况下模板的实例化是正确的。虽然在有了经验之后会发现这个问题挺荒唐的，但是仍然会让新手有困惑。
-
-相比之下，更加遵守标准的Clang在错误提示上就要清晰许多：
-
-```
-error: unknown type name 'WTF'
-    WTF instance2
-    ^
-error: expected ';' at end of declaration
-    WTF instance2
-                 ^
-                 ;
-error: no type named 'MemberType' in 'X<int>'
-    typename X<T>::MemberType instance1;
-    ~~~~~~~~~~~~~~~^~~~~~~~~~
-    note: in instantiation of member function 'Y<int>::foo' requested here
-        Y<int>::foo();
-                ^
-error: no type named 'MemberType' in 'X<float>'
-    typename X<T>::MemberType instance1;
-    ~~~~~~~~~~~~~~~^~~~~~~~~~
-    note: in instantiation of member function 'Y<float>::foo' requested here
-        Y<float>::foo();
-                  ^
-4 errors generated.
-```
-可以看到，Clang的提示和标准更加契合。它很好地区分了模板在定义和实例化时分别产生的错误。
-
-另一个缺点也与之类似。因为没有足够的检查，如果你写的模板没有被实例化，那么很可能缺陷会一直存在于代码之中。特别是模板代码多在头文件。虽然不如接口那么重要，但也是属于被公开的部分，别人很可能会踩到坑上。缺陷一旦传播开修复起来就没那么容易了。
-
-但是正如我前面所述，这个违背了标准的特性，并不是一无是处。首先，它可以完美的兼容标准。符合标准的、能够被正确编译的代码，一定能够被MSVC的方案所兼容。其次，它带来了一个非常有趣的特性，看下面这个例子：
-
-```C++
-struct A;
-template <typename T> struct X {
-    int v;
-    void convertTo(A& a) {
-       a.v = v; // 这里需要A的实现
-    }
-};
-
-struct A { int v; };
-
-void main() {
-    X<int> x;
-    x.foo(5);
-}
-```
-这个例子在Clang中是错误的，因为：
-```
-error: variable has incomplete type 'A'
-                        A a;
-                          ^
-    note: forward declaration of 'A'
-     struct A;
-            ^
-1 error generated.
-```
-
-符合标准的写法需要将模板类的定义，和模板函数的定义分离开：
-
-> TODO 此处例子不够恰当，并且描述有歧义。需要在未来版本中修订。
-
-```C++
-struct A;
-template <typename T> struct X {
-    int v;
-    void convertTo(A& a);
-};
-
-struct A { int v; };
-
-template <typename T> void X<T>::convertTo(A& a) {
-   a.v = v;
-}
-    
-void main() {
-    X<int> x;
-    x.foo(5);
-}
-```
-
-但是其实我们知道，`foo`要到实例化之后，才需要真正的做语义分析。在MSVC上，因为函数实现就是到模板实例化时才处理的，所以这个例子是完全正常工作的。因此在上面这个例子中，MSVC的实现要比标准更加易于写和维护，是不是有点写Java/C#那种声明实现都在同一处的清爽感觉了呢！
-
-扩展阅读： [The Dreaded Two-Phase Name Lookup][2]
-
-#### 2.3.3 “多余的”  typename 关键字
-
-到了这里，2.3.1 中提到的四个问题，还有三个没有解决：
-
-```C++
-template <typename T> struct X {};
-	
-template <typename T> struct Y
+int main()
 {
-    typedef X<T> ReboundType;						// 这里为什么是正确的？
-    typedef typename X<T>::MemberType MemberType2;	// 这里的typename是做什么的？
-    typedef UnknownType MemberType3;				// 这里为什么会出错？
-};
-```
-
-我们运用我们2.3.2节中学习到的标准，来对Y内部做一下分析：
-
-```C++
-template <typename T> struct Y
-{
-    // X可以查找到原型；
-    // X<T>是一个依赖性名称，模板定义阶段并不管X<T>是不是正确的。
-    typedef X<T> ReboundType;
-	
-    // X可以查找到原型；
-    // X<T>是一个依赖性名称，X<T>::MemberType也是一个依赖性名称；
-    // 所以模板声明时也不会管X模板里面有没有MemberType这回事。
-    typedef typename X<T>::MemberType MemberType2;
-	
-    // UnknownType 不是一个依赖性名称
-    // 而且这个名字在当前作用域中不存在，所以直接报错。
-    typedef UnknownType MemberType3;				
-};
-```
-
-下面，唯一的问题就是第二个：`typename`是做什么的？
-
-对于用户来说，这其实是一个语法噪音。也就是说，其实就算没有它，语法上也说得过去。事实上，某些情况下MSVC的确会在标准需要的时候，不用写`typename`。但是标准中还是规定了形如 `T::MemberType` 这样的`qualified id` 在默认情况下不是一个类型，而是解释为`T`的一个成员变量`MemberType`，只有当`typename`修饰之后才能作为类型出现。
-
-事实上，标准对`typename`的使用规定极为复杂，也算是整个模板中的难点之一。如果想了解所有的标准，需要阅读标准14.6节下2-7条，以及14.6.2.1第一条中对于`current instantiation`的解释。
-
-简单来说，如果编译器能在出现的时候知道它是一个类型，那么就不需要`typename`，如果必须要到实例化的时候才能知道它是不是合法，那么定义的时候就把这个名称作为变量而不是类型。
-
-我们用一行代码来说明这个问题：
-
-```C++
-a * b;
-```
-
-在没有模板的情况下，这个语句有两种可能的意思：如果`a`是一个类型，这就是定义了一个指针`b`，它拥有类型`a*`；如果`a`是一个对象或引用，这就是计算一个表达式`a*b`，虽然结果并没有保存下来。可是如果上面的`a`是模板参数的成员，会发生什么呢？
-
-```C++
-template <typename T> void meow()
-{
-    T::a * b; // 这是指针定义还是表达式语句？
+    x.foo(); // error, s_mem not found
+    return 0;
 }
 ```
-
-编译器对模板进行语法检查的时候，必须要知道上面那一行到底是个什么——这当然可以推迟到实例化的时候进行（比如VC，这也是上面说过VC可以不加`typename`的原因），不过那是另一个故事了——显然在模板定义的时候，编译器并不能妄断。因此，C++标准规定，在没有`typename`约束的情况下认为这里`T::a`不是类型，因此`T::a * b;` 会被当作表达式语句（例如乘法）；而为了告诉编译器这是一个指针的定义，我们必须在`T::a`之前加上`typename`关键字，告诉编译器`T::a`是一个类型，这样整个语句才能符合指针定义的语法。
-
-在这里，我举几个例子帮助大家理解`typename`的用法，这几个例子已经足以涵盖日常使用[（预览）][3]：
 
 ```C++
 struct A;
@@ -755,19 +547,6 @@ template <typename T> struct X {
                                     // 但是这个时候，B并没有被实现，所以就出错了
 };
 ```
-
-### 2.4 本章小结
-
-这一章是写作中最艰难的一章，中间停滞了将近一年。因为要说清楚C++模板中一些语法噪音和设计决议并不是一件轻松的事情。不过通过这一章的学习，我们知道了下面这几件事情：
-
-1. **部分特化/偏特化** 和 **特化** 相当于是模板实例化过程中的`if-then-else`。这使得我们根据不同类型，选择不同实现的需求得以实现；
-
-2. 在 2.3.3 一节我们插入了C++模板中最难理解的内容之一：名称查找。名称查找是语义分析的一个环节，模板内书写的 **变量声明**、**typedef**、**类型名称** 甚至 **类模板中成员函数的实现** 都要符合名称查找的规矩才不会出错；
-
-3. C++编译器对语义的分析的原则是“大胆假设，小心求证”：在能求证的地方尽量求证 —— 比如两段式名称查找的第一阶段；无法检查的地方假设你是正确的 —— 比如`typedef typename A<T>::MemberType _X;`在模板定义时因为`T`不明确不会轻易判定这个语句的死刑。
-
-从下一章开始，我们将进入元编程环节。我们将使用大量的示例，一方面帮助巩固大家学到的模板知识，一方面也会引导大家使用函数式思维去解决常见的问题。
-
 ## 3   深入理解特化与偏特化
 
 ### 3.1 正确的理解偏特化
