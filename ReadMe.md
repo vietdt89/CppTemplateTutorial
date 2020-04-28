@@ -553,10 +553,6 @@ template <typename T> struct X {
 
 #### 3.1.1 偏特化与函数重载的比较
 
-在前面的章节中，我们介绍了偏特化的形式、也介绍了简单的用例。因为偏特化和函数重载存在着形式上的相似性，因此初学者便会借用重载的概念，来理解偏特化的行为。只是，重载和偏特化尽管相似但仍有差异。
-
-我们来先看一个函数重载的例子：
-
 ```C++
 void doWork(int);
 void doWork(float);
@@ -586,10 +582,6 @@ void f(){
     DoWork<int, int> ii;
 }
 ```
-
-这个例子在字面上“看起来”并没有什么问题，可惜编译器在编译的时候仍然提示出错了[`goo.gl/zI42Zv`](http://goo.gl/zI42Zv)：
-
-```
 5 : error: too many template arguments for class template 'DoWork'
 template <> struct DoWork<int, int> {}; // 这是 int, int 类型的“重载”
 ^ ~~~~
@@ -605,12 +597,6 @@ template <typename T> class X      {};
 template <typename T> class X <T*> {};
 //                            ^^^^ 注意这里
 ```
-
-对，就是这个`<T*>`，跟在X后面的“小尾巴”，我们称作实参列表，决定了第二条语句是第一条语句的跟班。所以，第二条语句，即“偏特化”，必须要符合原型X的基本形式：那就是只有一个模板参数。这也是为什么`DoWork`尝试以`template <> struct DoWork<int, int>`的形式偏特化的时候，编译器会提示模板实参数量过多。
-
-另外一方面，在类模板的实例化阶段，它并不会直接去寻找 `template <> struct DoWork<int, int>`这个小跟班，而是会先找到基本形式，`template <typename T> struct DoWork;`，然后再去寻找相应的特化。
-
-我们以`DoWork<int> i;`为例，尝试复原一下编译器完成整个模板匹配过程的场景，帮助大家理解。看以下示例代码：
 
 ```C++
 template <typename T> struct DoWork;	      // (0) 这是原型
