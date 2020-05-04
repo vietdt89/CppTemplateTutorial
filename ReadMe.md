@@ -8,7 +8,6 @@ This article is not used to get started with C++, the example involves some othe
 + Familiar with algorithms
 This article is not just a repetition of ["C++ template"](https://www.amazon.com/C-Templates-Complete-Guide-2nd/dp/0321714121) and less overlap with ["Modern C++ Design"](https://www.amazon.com/Modern-Design-Programming-Patterns-Depth-ebook/dp/B00AU3JUHG/ref=pd_vtpd_14_6/142-2615446-3327350)
 It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
-Copyright: This article belongs to @wuye9036. I translate and modify what I consider important
 
 ## 1. Template basic syntax
 
@@ -455,7 +454,7 @@ template <typename T>
 class TypeToID<T*> 
 {
 public:
- static int const ID = 0x80000000;	// 用最高位表示它是一个指针
+ static int const ID = 0x80000000;	
 };
 ```
 ``` C++
@@ -518,35 +517,6 @@ int main()
     return 0;
 }
 ```
-
-```C++
-struct A;
-template <typename T> struct B;
-template <typename T> struct X {
-    typedef X<T> _A; // 编译器当然知道 X<T> 是一个类型。
-    typedef X    _B; // X 等价于 X<T> 的缩写
-    typedef T    _C; // T 不是一个类型还玩毛
-    
-    // ！！！注意我要变形了！！！
-    class Y {
-        typedef X<T>     _D;          // X 的内部，既然外部高枕无忧，内部更不用说了
-        typedef X<T>::Y  _E;          // 嗯，这里也没问题，编译器知道Y就是当前的类型，
-                                      // 这里在VS2015上会有错，需要添加 typename，
-                                      // Clang 上顺利通过。
-        typedef typename X<T*>::Y _F; // 这个居然要加 typename！
-                                      // 因为，X<T*>和X<T>不一样哦，
-                                      // 它可能会在实例化的时候被别的偏特化给抢过去实现了。
-    };
-    
-    typedef A _G;                   // 嗯，没问题，A在外面声明啦
-    typedef B<T> _H;                // B<T>也是一个类型
-    typedef typename B<T>::type _I; // 嗯，因为不知道B<T>::type的信息，
-                                    // 所以需要typename
-    typedef B<int>::type _J;        // B<int> 不依赖模板参数，
-                                    // 所以编译器直接就实例化（instantiate）了
-                                    // 但是这个时候，B并没有被实现，所以就出错了
-};
-```
 ## 3   深入理解特化与偏特化
 
 ### 3.1 正确的理解偏特化
@@ -565,7 +535,7 @@ void f() {
 }
 ```
 
-在这个例子中，我们展现了函数重载可以在两种条件下工作：参数数量相同、类型不同；参数数量不同。
+在这个例子中，我们展现了函数重载可以在两种条件下工作：参数数量相同、类型不同；参数数量不同
 
 仿照重载的形式，我们通过特化机制，试图实现一个模板的“重载”：
 
@@ -597,7 +567,10 @@ template <typename T> class X      {};
 template <typename T> class X <T*> {};
 //                            ^^^^ 注意这里
 ```
-
+```C++
+template <typename A, typename B>
+void f(int,B*);
+```
 ```C++
 template <typename T> struct DoWork;	      // (0) 这是原型
 
@@ -608,20 +581,6 @@ template <typename U> struct DoWork<U*> {};   // (3) 这是指针类型的偏特
 DoWork<int>    i;  // (4)
 DoWork<float*> pf; // (5)
 ```
-
-首先，编译器分析(0), (1), (2)三句，得知(0)是模板的原型，(1)，(2)，(3)是模板(0)的特化或偏特化。我们假设有两个字典，第一个字典存储了模板原型，我们称之为`TemplateDict`。第二个字典`TemplateSpecDict`，存储了模板原型所对应的特化/偏特化形式。所以编译器在处理这几句时，可以视作
-
-```C++
-// 以下为伪代码
-TemplateDict[DoWork<T>] = {
-    DoWork<int>,
-    DoWork<float>,
-    DoWork<U*>                     
-};
-```
-
-然后 (4) 试图以`int`实例化类模板`DoWork`。它会在`TemplateDict`中，找到`DoWork`，它有一个形式参数`T`接受类型，正好和我们实例化的要求相符合。并且此时`T`被推导为`int`。(5) 中的`float*`也是同理。
-
 ```C++
 {   // 以下为 DoWork<int> 查找对应匹配的伪代码
     templateProtoInt = TemplateDict.find(DoWork, int);    // 查找模板原型，查找到(0)
@@ -631,7 +590,7 @@ TemplateDict[DoWork<T>] = {
 {   // 以下为DoWork<float*> 查找对应匹配的伪代码
     templateProtoIntPtr = TemplateDict.find(DoWork, float*) // 查找模板原型，查找到(0)
     template = templateProtoIntPtr.match(float*)            // 以 float* 对应 U* 匹配到 (3)，此时U为float
-}
+
 ```
 
 那么根据上面的步骤所展现的基本原理，我们随便来几个练习：
