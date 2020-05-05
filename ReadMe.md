@@ -535,10 +535,6 @@ void f() {
 }
 ```
 
-在这个例子中，我们展现了函数重载可以在两种条件下工作：参数数量相同、类型不同；参数数量不同
-
-仿照重载的形式，我们通过特化机制，试图实现一个模板的“重载”：
-
 ```C++
 template <typename T> struct DoWork;	 // (0) 这是原型
 
@@ -553,20 +549,15 @@ void f(){
 }
 ```
 5 : error: too many template arguments for class template 'DoWork'
-template <> struct DoWork<int, int> {}; // 这是 int, int 类型的“重载”
+template <> struct DoWork<int, int> {}; 
 ^ ~~~~
 1 : note: template is declared here
-template <typename T> struct DoWork {}; // 这是原型
+template <typename T> struct DoWork {}; 
 ~~~~~~~~~~~~~~~~~~~~~ ^
 ```
 
-从编译出错的失望中冷静一下，在仔细看看函数特化/偏特化和一般模板的不同之处：
+Partial initialization
 
-```C++
-template <typename T> class X      {};
-template <typename T> class X <T*> {};
-//                            ^^^^ 注意这里
-```
 ```C++
 template <typename A, typename B>
 void f(int,B*);
@@ -623,32 +614,6 @@ X<int,     double*>  v6;
 X<int*,    int>      v7;                       
 X<double*, double>   v8;
 ```
-
-在上面这段例子中，有几个值得注意之处。首先，偏特化时的模板形参，和原型的模板形参没有任何关系。和原型不同，它的顺序完全不影响模式匹配的顺序，它只是偏特化模式，如`<U, int>`中`U`的声明，真正的模式，是由`<U, int>`体现出来的。
-
-这也是为什么在特化的时候，当所有类型都已经确定，我们就可以抛弃全部的模板参数，写出`template <> struct X<int, float>`这样的形式：因为所有列表中所有参数都确定了，就不需要额外的形式参数了。
-
-其次，作为一个模式匹配，偏特化的实参列表中展现出来的“样子”，就是它能被匹配的原因。比如，`struct X<T, T>`中，要求模板的两个参数必须是相同的类型。而`struct X<T, T*>`，则代表第二个模板类型参数必须是第一个模板类型参数的指针，比如`X<float***, float****>`就能匹配上。当然，除了简单的指针、`const`和`volatile`修饰符，其他的类模板也可以作为偏特化时的“模式”出现，例如示例8，它要求传入同一个类型的`unique_ptr`和`shared_ptr`。C++标准中指出下列模式都是可以被匹配的：
-
-> N3337, 14.8.2.5/8
-
-> 令`T`是模板类型实参或者类型列表（如 _int, float, double_  这样的，`TT`是template-template实参（参见6.2节），`i`是模板的非类型参数（整数、指针等），则以下形式的形参都会参与匹配：
-
-> `T`, `cv-list T`, `T*`, `template-name <T>`, `T&`, `T&&`
-
->`T [ integer-constant ]`
-
->`type (T)`, `T()`, `T(T)`
-
->`T type ::*`, `type T::*`, `T T::*`
-
->`T (type ::*)()`, `type (T::*)()`, `type (type ::*)(T)`, `type (T::*)(T)`, `T (type ::*)(T)`, `T (T::*)()`, `T (T::*)(T)`
-
->`type [i]`, `template-name <i>`, `TT<T>`, `TT<i>`, `TT<>`
-
-对于某些实例化，偏特化的选择并不是唯一的。比如v4的参数是`<float*, float*>`，能够匹配的就有三条规则，1，6和7。很显然，6还是比7好一些，因为能多匹配一个指针。但是1和6，就很难说清楚谁更好了。一个说明了两者类型相同；另外一个则说明了两者都是指针。所以在这里，编译器也没办法决定使用那个，只好报出了编译器错误。
-
-其他的示例可以先自己推测一下， 再去编译器上尝试一番：[`goo.gl/9UVzje`](http://goo.gl/9UVzje)。
 
 #### 3.1.2 不定长的模板参数
 
