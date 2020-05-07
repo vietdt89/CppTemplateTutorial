@@ -10,11 +10,6 @@ This article is not just a repetition of ["C++ template"](https://www.amazon.com
 It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
 
 ## 1. Template basic syntax
-
-### 1.1 Template Class basic syntax
-
-#### 1.1.1 Template Class and member variable definition
-
 Template Class statement：
 ```C++
 template <typename T> class ClassA;
@@ -85,7 +80,7 @@ template <typename T0, typename T1> class ClassB
 
 ClassB<int, float>
 ```
-#### 1.1.3 Template class function definition
+## 2. Template class function definition
 Member functions in template class are usually implemented inline
 
 ``` C++
