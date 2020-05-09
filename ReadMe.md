@@ -9,6 +9,8 @@ This article is not just a repetition of ["C++ template"](https://www.amazon.com
 It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
 
 ## 1. Template basic syntax
+C++ template metaprogramming uses template instantiation to drive compile-time evaluation. Wehn we use the name of a template where a function, type, variable is expected, the compiler will instantiate the expected entity from that template. Templete improve performance and sourcecode flexibility
+
 Template Class statement：
 ```C++
 template <typename T> class ClassA;
