@@ -1,13 +1,4 @@
 # C++ Template guide
-
-Appropriate readership
-This article is not used to get started with C++, the example involves some other knowledge. So it will be easier if the reader is:
-+ Familiar with C++
-+ Get used to STL
-+ Familiar with algorithms
-This article is not just a repetition of ["C++ template"](https://www.amazon.com/C-Templates-Complete-Guide-2nd/dp/0321714121) and less overlap with ["Modern C++ Design"](https://www.amazon.com/Modern-Design-Programming-Patterns-Depth-ebook/dp/B00AU3JUHG/ref=pd_vtpd_14_6/142-2615446-3327350)
-It is suggested that you read the article first, then read"C++ template" to get richer syntax and implementation details, then go further "Modern C++ design" in addition to meta programming. 
-
 ## 1. Template basic syntax
 C++ template metaprogramming uses template instantiation to drive compile-time evaluation. Wehn we use the name of a template where a function, type, variable is expected, the compiler will instantiate the expected entity from that template. Templete improve performance and sourcecode flexibility
 
